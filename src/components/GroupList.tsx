@@ -53,7 +53,7 @@ export function GroupList({ groups, notes, noteCounts, onGroupClick, language = 
           <div className="flex justify-between items-start mb-4 relative z-10">
             <div 
               className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg"
-              style={{ backgroundColor: group.color, boxShadow: `0 8px 16px -4px ${group.color}40` }}
+              style={{ backgroundColor: group.color, boxShadow: `0 8px 16px -4px color-mix(in srgb, ${group.color}, transparent 75%)` }}
             >
               {group.name.charAt(0).toUpperCase()}
             </div>

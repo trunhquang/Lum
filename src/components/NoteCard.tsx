@@ -121,16 +121,19 @@ export function NoteCard({
     >
       <div className="flex justify-between items-start gap-3 mb-2">
         <div className="flex flex-1 gap-2 items-center min-w-0">
-          <Badge 
-            variant="secondary" 
+          <div 
             className={cn(
-              "whitespace-normal line-clamp-2 break-words text-left h-auto py-1 px-2.5 leading-relaxed overflow-hidden",
-              group && group.id !== "ungrouped" ? "" : "bg-orange-100 text-orange-600 hover:bg-orange-100"
+              "text-[10px] font-bold px-2.5 py-1 rounded-lg overflow-hidden max-w-[140px] xs:max-w-[180px] sm:max-w-[220px] truncate inline-block align-middle transition-colors border",
+              group && group.id !== "ungrouped" ? "border-transparent" : "bg-orange-100 text-orange-600 border-orange-200"
             )}
-            style={group && group.id !== "ungrouped" ? { backgroundColor: `${group.color}20`, color: group.color } : {}}
+            style={group && group.id !== "ungrouped" ? { 
+              backgroundColor: `color-mix(in srgb, ${group.color}, transparent 88%)`, 
+              color: group.color,
+              borderColor: `color-mix(in srgb, ${group.color}, transparent 80%)`
+            } : {}}
           >
             {group ? group.name : (language === "vi" ? "Chưa phân loại" : "Ungrouped")}
-          </Badge>
+          </div>
           {note.groupId === "ungrouped" && !note.isProcessing && (
             <button
               onClick={(e) => {
