@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "customApiKey": { "type": "string", "description": "Optional user-provided Gemini API Key" }
+      },
+      "required": ["email"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "A collection of related notes",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "number" },
+        "icon": { "type": "string" }
+      },
+      "required": ["name", "userId", "updatedAt"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A single note or insight",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "title": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "groupId": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "url"] },
+        "isProcessing": { "type": "boolean" },
+        "isBookmarked": { "type": "boolean" },
+        "processingStatus": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "translatedContent": { "type": "string" },
+        "translatedTitle": { "type": "string" },
+        "translatedSummary": { "type": "string" },
+        "translationLang": { "type": "string", "enum": ["vi", "en"] }
+      },
+      "required": ["userId", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user profiles"
+    },
+    "/groups/{groupId}": {
+      "schema": "Group",
+      "description": "Stores note groups"
+    },
+    "/notes/{noteId}": {
+      "schema": "Note",
+      "description": "Stores individual notes"
+    }
+  }
+}

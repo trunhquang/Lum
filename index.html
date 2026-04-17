@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <script>
+      (function() {
+        try {
+          const nativeFetch = window.fetch;
+          const patch = {
+            get: function() { return nativeFetch; },
+            set: function() { console.warn('Blocked fetch overwrite'); },
+            configurable: true,
+            enumerable: true
+          };
+          Object.defineProperty(window, 'fetch', patch);
+          if (typeof globalThis !== 'undefined') Object.defineProperty(globalThis, 'fetch', patch);
+          if (typeof self !== 'undefined') Object.defineProperty(self, 'fetch', patch);
+        } catch (e) {
+          // Fallback
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
