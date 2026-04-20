@@ -120,10 +120,20 @@ export function NoteDetailView({ note, group, existingGroups, onBack, onSave, on
               <span>{format(note.timestamp, "PPP p", { locale })}</span>
             </div>
             {group && (
-              <Badge variant="secondary" style={{ backgroundColor: `${group.color}20`, color: group.color }} className="border-none">
-                <Hash className="w-3 h-3 mr-1" />
+              <div 
+                className={cn(
+                  "text-[10px] font-bold px-2.5 py-1 rounded-lg overflow-hidden max-w-[180px] truncate inline-block align-middle transition-colors border",
+                  group.id !== "ungrouped" ? "border-transparent" : "bg-orange-100 text-orange-600 border-orange-200"
+                )}
+                style={group.id !== "ungrouped" ? { 
+                  backgroundColor: `color-mix(in srgb, ${group.color}, transparent 90%)`, 
+                  color: group.color,
+                  borderColor: `color-mix(in srgb, ${group.color}, transparent 80%)`
+                } : {}}
+              >
+                {group.id !== "ungrouped" && <Hash className="w-2.5 h-2.5 inline-block mr-1 -mt-0.5" />}
                 {group.name}
-              </Badge>
+              </div>
             )}
           </div>
 
