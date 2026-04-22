@@ -34,8 +34,13 @@ export function NoteDetailView({ note, group, existingGroups, onBack, onSave, on
   const [selectedGroupId, setSelectedGroupId] = useState(note.groupId);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isGroupsExpanded, setIsGroupsExpanded] = useState(false);
   const [mode, setMode] = useState<"edit" | "preview">("preview");
   const locale = language === "vi" ? vi : enUS;
+
+  const displayedGroups = isGroupsExpanded 
+    ? existingGroups 
+    : existingGroups.filter(g => g.id === selectedGroupId || existingGroups.indexOf(g) < 2).slice(0, 3);
 
   const handleSave = () => {
     onSave(note.id, { title, content, groupId: selectedGroupId });
@@ -138,14 +143,25 @@ export function NoteDetailView({ note, group, existingGroups, onBack, onSave, on
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nhóm</label>
-            <div className="flex flex-wrap gap-2">
-              {existingGroups.map((g) => (
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{language === "vi" ? "Phân loại vào nhóm" : "Assign to Group"}</label>
+              {existingGroups.length > 3 && (
+                <button 
+                  onClick={() => setIsGroupsExpanded(!isGroupsExpanded)}
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors px-1"
+                >
+                  {isGroupsExpanded ? (language === "vi" ? "Thu gọn" : "Collapse") : (language === "vi" ? `Xem thêm (${existingGroups.length - displayedGroups.length})` : `Show More (${existingGroups.length - displayedGroups.length})`)}
+                  <ChevronLeft className={cn("w-3 h-3 transition-transform duration-300", isGroupsExpanded ? "rotate-90" : "-rotate-90")} />
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 transition-all duration-300">
+              {displayedGroups.map((g) => (
                 <button
                   key={g.id}
                   onClick={() => setSelectedGroupId(g.id)}
                   className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-medium transition-all border",
+                    "px-3 py-1.5 rounded-xl text-xs font-medium transition-all border shrink-0",
                     selectedGroupId === g.id 
                       ? "bg-blue-50 border-blue-200 text-blue-600 shadow-sm" 
                       : "bg-white border-gray-100 text-gray-500 hover:border-gray-200"
@@ -154,6 +170,13 @@ export function NoteDetailView({ note, group, existingGroups, onBack, onSave, on
                   {g.name}
                 </button>
               ))}
+              {!isGroupsExpanded && existingGroups.length > displayedGroups.length && (
+                <div className="flex items-center px-1">
+                  <div className="w-1 h-1 rounded-full bg-gray-200 mr-0.5" />
+                  <div className="w-1 h-1 rounded-full bg-gray-200 mr-0.5" />
+                  <div className="w-1 h-1 rounded-full bg-gray-200" />
+                </div>
+              )}
             </div>
           </div>
 

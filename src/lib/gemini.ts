@@ -59,8 +59,8 @@ export async function groupNoteWithAI(content: string, existingGroups: { id: str
   try {
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: prompt,
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -73,12 +73,21 @@ export async function groupNoteWithAI(content: string, existingGroups: { id: str
             aiSummary: { type: Type.STRING },
             reason: { type: Type.STRING }
           },
-          required: ["groupId", "reason", "suggestedTitle", "aiSummary"]
+          required: ["groupId", "reason", "suggestedTitle", "aiSummary", "newGroupName"]
         }
       }
     });
 
-    return JSON.parse(response.text);
+    if (!response.text) {
+      throw new Error("AI returned empty response");
+    }
+
+    try {
+      return JSON.parse(response.text);
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", response.text);
+      throw new Error("AI response was not valid JSON");
+    }
   } catch (error) {
     console.error("AI Grouping Error:", error);
     throw error; // Rethrow to handle in the UI
@@ -94,8 +103,8 @@ export async function generateGroupSummary(notes: string[]) {
   try {
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: prompt
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
     });
     return response.text;
   } catch (error) {
@@ -133,8 +142,8 @@ export async function translateNoteContent(
   try {
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: prompt,
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -170,8 +179,8 @@ export async function translateContent(text: string, targetLang: "vi" | "en") {
   try {
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: prompt
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
     });
     return response.text;
   } catch (error) {
