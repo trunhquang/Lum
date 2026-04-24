@@ -16,6 +16,7 @@ interface GroupDetailViewProps {
   onNoteClick: (note: Note) => void;
   onUpdateNote?: (id: string, updates: Partial<Note>) => void;
   onToggleBookmark?: (id: string) => void;
+  onTogglePin?: (id: string) => void;
   onUpdateGroup?: (id: string, updates: Partial<Group>) => void;
   onDeleteGroup?: (id: string) => void;
   onStopProcessing?: (id: string) => void;
@@ -30,13 +31,20 @@ export function GroupDetailView({
   onNoteClick, 
   onUpdateNote, 
   onToggleBookmark, 
+  onTogglePin,
   onUpdateGroup,
   onDeleteGroup,
   onStopProcessing,
   onReclassify,
   language = "vi" 
 }: GroupDetailViewProps) {
-  const groupNotes = notes.filter(n => n.groupId === group.id).sort((a, b) => b.timestamp - a.timestamp);
+  const groupNotes = notes.filter(n => n.groupId === group.id).sort((a, b) => {
+    // Sort by pinned first
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    // Then by timestamp desc
+    return b.timestamp - a.timestamp;
+  });
 
   return (
     <div className="flex flex-col h-full bg-white overflow-hidden min-h-0">
@@ -97,6 +105,7 @@ export function GroupDetailView({
               onNoteClick={onNoteClick}
               onUpdateNote={onUpdateNote}
               onToggleBookmark={onToggleBookmark}
+              onTogglePin={onTogglePin}
               onStopProcessing={onStopProcessing}
               onReclassify={onReclassify}
             />

@@ -16,6 +16,7 @@ export interface Note {
   translatedSummary?: string;
   translationLang?: "vi" | "en";
   isBookmarked: boolean;
+  isPinned?: boolean;
   userId: string;
   isProcessing?: boolean;
   processingStatus?: string;

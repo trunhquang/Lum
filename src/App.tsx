@@ -194,6 +194,15 @@ export default function App() {
       await firestoreService.updateNote(id, { isBookmarked: !note.isBookmarked });
     }
   };
+  
+  const handleTogglePin = async (id: string) => {
+    const note = notes.find(n => n.id === id);
+    if (note) {
+      const newPinnedStatus = !note.isPinned;
+      await firestoreService.updateNote(id, { isPinned: newPinnedStatus });
+      toast.success(newPinnedStatus ? "Đã ghim ghi chú" : "Đã bỏ ghim ghi chú");
+    }
+  };
 
   const handleDeleteNote = async (id: string) => {
     await firestoreService.deleteNote(id);
@@ -382,6 +391,12 @@ export default function App() {
       return n.groupId === selectedGroupId && matchesSearch;
     }
     return matchesSearch;
+  }).sort((a, b) => {
+    // Sort by pinned first
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    // Then by timestamp desc
+    return b.timestamp - a.timestamp;
   });
 
   const stats: UserStats = {
@@ -510,6 +525,7 @@ export default function App() {
                   onBack={() => setCurrentView("tabs")}
                   onUpdateNote={handleUpdateNote}
                   onToggleBookmark={handleToggleBookmark}
+                  onTogglePin={handleTogglePin}
                   onUpdateGroup={handleUpdateGroup}
                   onDeleteGroup={handleDeleteGroup}
                   onStopProcessing={handleStopProcessing}
@@ -537,6 +553,8 @@ export default function App() {
                   onBack={() => setCurrentView(selectedGroup ? "group-detail" : "tabs")}
                   onSave={handleUpdateNote}
                   onDelete={handleDeleteNote}
+                  onTogglePin={handleTogglePin}
+                  onToggleBookmark={handleToggleBookmark}
                 />
               </motion.div>
             )}
@@ -603,6 +621,7 @@ export default function App() {
                         note={note} 
                         group={groups.find(g => g.id === note.groupId)} 
                         onToggleBookmark={handleToggleBookmark}
+                        onTogglePin={handleTogglePin}
                         onUpdateNote={handleUpdateNote}
                         onStopProcessing={handleStopProcessing}
                         onReclassify={handleReclassify}

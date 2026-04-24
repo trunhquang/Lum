@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { Note, Group } from "@/src/types";
-import { ChevronLeft, Save, Trash2, Calendar, Hash, Sparkles, Eye, Edit3, Languages, Loader2 } from "lucide-react";
+import { ChevronLeft, Save, Trash2, Calendar, Hash, Sparkles, Eye, Edit3, Languages, Loader2, Pin, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -25,10 +25,22 @@ interface NoteDetailViewProps {
   onBack: () => void;
   onSave: (id: string, updates: Partial<Note>) => void;
   onDelete?: (id: string) => void;
+  onTogglePin?: (id: string) => void;
+  onToggleBookmark?: (id: string) => void;
   language?: "vi" | "en";
 }
 
-export function NoteDetailView({ note, group, existingGroups, onBack, onSave, onDelete, language = "vi" }: NoteDetailViewProps) {
+export function NoteDetailView({ 
+  note, 
+  group, 
+  existingGroups, 
+  onBack, 
+  onSave, 
+  onDelete, 
+  onTogglePin,
+  onToggleBookmark,
+  language = "vi" 
+}: NoteDetailViewProps) {
   const [title, setTitle] = useState(note.title || "");
   const [content, setContent] = useState(note.content);
   const [selectedGroupId, setSelectedGroupId] = useState(note.groupId);
@@ -93,6 +105,25 @@ export function NoteDetailView({ note, group, existingGroups, onBack, onSave, on
           <span className="font-semibold text-gray-700">{language === "vi" ? "Chi tiết ghi chú" : "Note Details"}</span>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onTogglePin?.(note.id)}
+            className={cn("hover:bg-blue-50 transition-colors", note.isPinned ? "text-blue-600" : "text-gray-400")}
+            title={language === "vi" ? (note.isPinned ? "Bỏ ghim" : "Ghim") : (note.isPinned ? "Unpin" : "Pin")}
+          >
+            <Pin className={cn("w-5 h-5", note.isPinned && "fill-blue-600")} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onToggleBookmark?.(note.id)}
+            className={cn("hover:bg-yellow-50 transition-colors", note.isBookmarked ? "text-yellow-600" : "text-gray-400")}
+            title={language === "vi" ? "Đánh dấu" : "Bookmark"}
+          >
+            <Bookmark className={cn("w-5 h-5", note.isBookmarked && "fill-yellow-600")} />
+          </Button>
+          <div className="w-px h-6 bg-gray-100 mx-1" />
           <Button 
             variant="ghost" 
             size="sm" 

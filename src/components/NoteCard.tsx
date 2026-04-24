@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { vi, enUS } from "date-fns/locale";
-import { ExternalLink, Bookmark, Languages, Loader2, Sparkles } from "lucide-react";
+import { ExternalLink, Bookmark, Pin, Languages, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { translateNoteContent } from "@/src/lib/gemini";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ interface NoteCardProps {
   group?: Group;
   language?: "vi" | "en";
   onToggleBookmark?: (id: string) => void;
+  onTogglePin?: (id: string) => void;
   onNoteClick?: (note: Note) => void;
   onUpdateNote?: (id: string, updates: Partial<Note>) => void;
   onStopProcessing?: (id: string) => void;
@@ -34,6 +35,7 @@ export function NoteCard({
   group, 
   language = "vi", 
   onToggleBookmark, 
+  onTogglePin,
   onNoteClick, 
   onUpdateNote,
   onStopProcessing,
@@ -152,9 +154,20 @@ export function NoteCard({
             <button 
               onClick={(e) => {
                 e.stopPropagation();
+                onTogglePin?.(note.id);
+              }}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              title={language === "vi" ? "Ghim" : "Pin"}
+            >
+              <Pin className={cn("w-4 h-4 transition-all", note.isPinned ? "fill-blue-500 text-blue-500 rotate-45 scale-110" : "text-gray-300")} />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
                 onToggleBookmark?.(note.id);
               }}
               className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              title={language === "vi" ? "Đánh dấu" : "Bookmark"}
             >
               <Bookmark className={cn("w-4 h-4", note.isBookmarked ? "fill-yellow-400 text-yellow-400" : "text-gray-300")} />
             </button>
