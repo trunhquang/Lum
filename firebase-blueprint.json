@@ -23,7 +23,21 @@
         "description": { "type": "string" },
         "userId": { "type": "string" },
         "updatedAt": { "type": "number" },
-        "icon": { "type": "string" }
+        "color": { "type": "string" },
+        "topicId": { "type": "string" }
+      },
+      "required": ["name", "userId", "updatedAt"]
+    },
+    "Topic": {
+      "title": "Topic",
+      "description": "A high-level theme containing multiple groups",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "number" },
+        "color": { "type": "string" }
       },
       "required": ["name", "userId", "updatedAt"]
     },
@@ -58,6 +72,10 @@
     "/groups/{groupId}": {
       "schema": "Group",
       "description": "Stores note groups"
+    },
+    "/topics/{topicId}": {
+      "schema": "Topic",
+      "description": "Stores group topics"
     },
     "/notes/{noteId}": {
       "schema": "Note",

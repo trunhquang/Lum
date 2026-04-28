@@ -164,6 +164,74 @@ export async function translateNoteContent(
   }
 }
 
+export async function groupContentIntoTopicsAI(groups: { id: string; name: string; description?: string }[]) {
+  const prompt = `
+    You are an AI data architect for LUM.
+    Your task is to take a list of "Groups" (folders) and organize them into higher-level "Topics" (Themes/Categories).
+    
+    Groups to organize:
+    ${groups.map(g => `- ${g.name} (ID: ${g.id}): ${g.description || "No description"}`).join('\n')}
+
+    Rules:
+    1. Group related items into cohesive topics.
+    2. Suggest a name and description for each topic.
+    3. Return a list of mappings: which group belongs to which topic using the provided group IDs.
+    4. If a group is too unique, it can be its own topic or left out by not assigning a topic (assign null).
+    5. Topics should be broad enough to house multiple groups but specific enough to be useful (e.g., "Kỳ nghỉ & Du lịch", "Học thuật & Nghiên cứu", "Tài chính Cá nhân").
+    6. Return the results in JSON.
+    7. IMPORTANT: Only use the IDs provided in the "Groups to organize" section. Do not use group names as groupIds.
+
+    Response format:
+    {
+      "topics": [
+        {
+          "name": "Topic Name",
+          "description": "Topic Description",
+          "groupIds": ["id1", "id2"]
+        }
+      ]
+    }
+  `;
+
+  try {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            topics: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  groupIds: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  }
+                },
+                required: ["name", "description", "groupIds"]
+              }
+            }
+          },
+          required: ["topics"]
+        }
+      }
+    });
+
+    if (!response.text) return { topics: [] };
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("AI Topic Grouping Error:", error);
+    return { topics: [] };
+  }
+}
+
 export async function translateContent(text: string, targetLang: "vi" | "en") {
   const prompt = `
     Translate the following text to ${targetLang === "vi" ? "Vietnamese" : "English"}.

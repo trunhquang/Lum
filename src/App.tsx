@@ -4,12 +4,13 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { Note, Group, UserStats } from "./types";
-import { groupNoteWithAI } from "./lib/gemini";
+import { Note, Group, UserStats, Topic } from "./types";
+import { groupNoteWithAI, groupContentIntoTopicsAI } from "./lib/gemini";
 import { BottomNav } from "./components/BottomNav";
 import { NoteCard } from "./components/NoteCard";
 import { ChatInput } from "./components/ChatInput";
 import { GroupList } from "./components/GroupList";
+import { SmartGroupsView } from "./components/SmartGroupsView";
 import { GroupDetailView } from "./components/GroupDetailView";
 import { NoteDetailView } from "./components/NoteDetailView";
 import { StatsDashboard } from "./components/StatsDashboard";
@@ -42,11 +43,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("chat");
   const [notes, setNotes] = useState<Note[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<"tabs" | "group-detail" | "note-detail">("tabs");
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
+  const [topicToRename, setTopicToRename] = useState<Topic | null>(null);
   const [isGrouping, setIsGrouping] = useState(false);
   const [groupingStatus, setGroupingStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,9 +98,15 @@ export default function App() {
       }
     });
 
+    // Load and listen to topics
+    const unsubTopics = firestoreService.subscribeTopics(user.uid, (data) => {
+      setTopics(data);
+    });
+
     return () => {
       unsubNotes();
       unsubGroups();
+      unsubTopics();
     };
   }, [user]);
 
@@ -217,9 +227,124 @@ export default function App() {
     toast.success("Đã thay đổi");
   };
 
+  const handleUpdateTopic = async (id: string, updates: Partial<Topic>) => {
+    await firestoreService.updateTopic(id, updates);
+    toast.success("Đã cập nhật chủ đề");
+    setTopicToRename(null);
+  };
+
+  const handleRenameTopicRequest = (topic: Topic) => {
+    setTopicToRename(topic);
+  };
+
+  const handleDeleteTopic = (id: string) => {
+    setTopicToDelete(id);
+  };
+
+  const confirmDeleteTopic = async () => {
+    if (!topicToDelete) return;
+    const id = topicToDelete;
+    console.log("[App] Confirming delete for topic:", id);
+    setTopicToDelete(null);
+    
+    try {
+      // Before deleting topic, remove topicId from its groups
+      const affectedGroups = groups.filter(g => g.topicId === id);
+      console.log("[App] Affected groups count:", affectedGroups.length);
+      
+      if (affectedGroups.length > 0) {
+        // Use a loop to update each group individually and catch errors for each
+        const results = await Promise.allSettled(
+          affectedGroups.map(g => firestoreService.updateGroup(g.id, { topicId: "" }))
+        );
+        
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length > 0) {
+          console.warn("[App] Some groups failed to update during topic deletion:", failed);
+        }
+      }
+      
+      await firestoreService.deleteTopic(id);
+      console.log("[App] Topic deleted successfully:", id);
+      toast.success("Đã xóa chủ đề");
+    } catch (error) {
+      console.error("[App] Delete topic error:", error);
+      toast.error("Không thể xóa chủ đề");
+    }
+  };
+
   const handleUpdateGroup = async (id: string, updates: Partial<Group>) => {
     await firestoreService.updateGroup(id, updates);
     toast.success("Đã cập nhật nhóm");
+  };
+
+  const handleAIGrowTopics = async () => {
+    if (!user) return;
+    
+    // Filter out "ungrouped" and only use groups that don't have a topic or we want to re-evaluate
+    const groupsToTopic = groups.filter(g => g.id !== "ungrouped");
+    
+    if (groupsToTopic.length < 2) {
+      toast.info("Cần ít nhất 2 nhóm để AI có thể gom nhóm chủ đề");
+      return;
+    }
+
+    setIsGrouping(true);
+    setGroupingStatus("AI đang phân tích các nhóm để tạo chủ đề...");
+    
+    try {
+      const result = await groupContentIntoTopicsAI(groupsToTopic.map(g => ({
+        id: g.id,
+        name: g.name,
+        description: g.description
+      })));
+
+      if (result.topics && result.topics.length > 0) {
+        for (const topicData of result.topics) {
+          // Create Topic
+          const topicId = await firestoreService.addTopic({
+            name: topicData.name,
+            description: topicData.description,
+            userId: user.uid,
+            updatedAt: Date.now(),
+            color: `#${Math.floor(Math.random()*16777215).toString(16)}`
+          });
+
+          if (topicId) {
+            // Assign groups to this topic
+            for (const gId of topicData.groupIds) {
+              await firestoreService.updateGroup(gId, { topicId });
+            }
+          }
+        }
+        toast.success(`Đã tạo ${result.topics.length} chủ đề thông minh`);
+      } else {
+        toast.info("AI không tìm thấy mối liên hệ nào đủ lớn để tạo chủ đề mới");
+      }
+    } catch (error) {
+      console.error("Topic Grouping Error:", error);
+      toast.error("Lỗi khi gom nhóm chủ đề bằng AI");
+    } finally {
+      setIsGrouping(false);
+      setGroupingStatus("");
+    }
+  };
+
+  const handleAssignGroupToTopic = async (groupId: string, topicId: string | null) => {
+    await firestoreService.updateGroup(groupId, { topicId: topicId || "" });
+    toast.success(topicId ? "Đã thêm vào chủ đề" : "Đã xóa khỏi chủ đề");
+  };
+
+  const handleCreateTopic = async (name: string, description?: string) => {
+    if (!user) return;
+    const topicId = await firestoreService.addTopic({
+      name,
+      description,
+      userId: user.uid,
+      updatedAt: Date.now(),
+      color: "#3b82f6"
+    });
+    return topicId;
   };
 
   const handleCreateGroup = async (name: string) => {
@@ -534,6 +659,7 @@ export default function App() {
               >
                 <GroupDetailView 
                   group={selectedGroup} 
+                  topics={topics}
                   notes={notes} 
                   onBack={() => setCurrentView("tabs")}
                   onUpdateNote={handleUpdateNote}
@@ -662,42 +788,30 @@ export default function App() {
                 exit={{ opacity: 0, x: -20 }}
                 className="flex-1 flex flex-col min-h-0 bg-white md:rounded-3xl md:shadow-xl md:shadow-blue-900/5 overflow-hidden border border-gray-100"
               >
-                <div className="p-6 flex justify-between items-center border-b border-gray-50 shrink-0">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Nhóm thông minh</h2>
-                    <p className="text-xs text-gray-400 mt-1">AI tự động phân loại ghi chú của bạn</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="rounded-xl gap-2 text-blue-600 border-blue-100 hover:bg-blue-50"
-                      onClick={() => {
-                        const name = prompt("Nhập tên nhóm mới:");
-                        if (name) handleCreateGroup(name);
-                      }}
-                    >
-                      + Thêm nhóm
-                    </Button>
-                    <Button variant="outline" size="sm" className="rounded-xl gap-2 text-blue-600 border-blue-100 hover:bg-blue-50">
-                      <RefreshCw className="w-4 h-4" />
-                      Làm mới AI
-                    </Button>
+                <div className="p-0 border-b border-gray-50 shrink-0">
+                  <div className="p-6 pb-2">
+                    <h2 className="text-xl font-bold text-gray-900">Thông minh & Chủ đề</h2>
+                    <p className="text-xs text-gray-400 mt-1">Sắp xếp các nhóm ghi chú của bạn một cách khoa học</p>
                   </div>
                 </div>
-                <ScrollArea className="flex-1 min-h-0">
-                  <div className="p-6">
-                    <GroupList 
-                      groups={groups} 
-                      notes={notes}
-                      noteCounts={noteCounts} 
-                      onGroupClick={(g) => {
-                        setSelectedGroup(g);
-                        setCurrentView("group-detail");
-                      }} 
-                    />
-                  </div>
-                </ScrollArea>
+                <div className="flex-1 min-h-0 flex flex-col">
+                  <SmartGroupsView 
+                    groups={groups}
+                    topics={topics}
+                    notes={notes}
+                    noteCounts={noteCounts}
+                    onGroupClick={(g) => {
+                      setSelectedGroup(g);
+                      setCurrentView("group-detail");
+                    }}
+                    onCreateTopic={handleCreateTopic}
+                    onUpdateTopic={handleUpdateTopic}
+                    onRenameTopic={handleRenameTopicRequest}
+                    onDeleteTopic={handleDeleteTopic}
+                    onAssignGroupToTopic={handleAssignGroupToTopic}
+                    onAIGrowTopics={handleAIGrowTopics}
+                  />
+                </div>
               </motion.div>
             )}
 
@@ -901,6 +1015,54 @@ export default function App() {
             <DialogFooter>
               <Button variant="ghost" onClick={() => setShowImportDialog(false)}>Hủy bỏ</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!topicToDelete} onOpenChange={(open) => !open && setTopicToDelete(null)}>
+          <DialogContent className="rounded-[2rem] max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-gray-900">Xóa chủ đề?</DialogTitle>
+              <DialogDescription className="text-gray-500">
+                Các nhóm bên trong sẽ trở về trạng thái chưa có chủ đề. Ghi chú của bạn vẫn an toàn.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:gap-0">
+              <Button variant="ghost" onClick={() => setTopicToDelete(null)} className="rounded-xl">Hủy</Button>
+              <Button variant="destructive" onClick={confirmDeleteTopic} className="rounded-xl">Xóa ngay</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!topicToRename} onOpenChange={(open) => !open && setTopicToRename(null)}>
+          <DialogContent className="rounded-[2rem] max-w-sm">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const name = formData.get("name") as string;
+              if (name && topicToRename) {
+                handleUpdateTopic(topicToRename.id, { name });
+              }
+            }}>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-gray-900">Đổi tên chủ đề</DialogTitle>
+                <DialogDescription className="text-gray-500">
+                  Nhập tên mới cho chủ đề của bạn.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <input 
+                  autoFocus
+                  name="name"
+                  defaultValue={topicToRename?.name}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-gray-50/50"
+                  placeholder="Tên chủ đề..."
+                />
+              </div>
+              <DialogFooter className="flex gap-2 sm:gap-0">
+                <Button type="button" variant="ghost" onClick={() => setTopicToRename(null)} className="rounded-xl">Hủy</Button>
+                <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">Lưu thay đổi</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

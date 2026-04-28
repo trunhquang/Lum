@@ -29,6 +29,16 @@ export interface Group {
   color: string;
   updatedAt: number;
   userId: string;
+  topicId?: string; // ID of the topic this group belongs to
+}
+
+export interface Topic {
+  id: string;
+  name: string;
+  description?: string;
+  userId: string;
+  updatedAt: number;
+  color?: string;
 }
 
 export interface UserStats {

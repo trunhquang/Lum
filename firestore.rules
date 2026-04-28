@@ -51,20 +51,19 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "trunhquang@gmail.com" && request.auth.token.email_verified == true));
+        (request.auth.token.email == "trunhquang@gmail.com" && request.auth.token.email_verified == true);
     }
 
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
     function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.userId;
+      return isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
     }
 
     function isNewDocOwner() {
-      return isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      return isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdmin());
     }
 
     function isValidUser(data) {
@@ -76,18 +75,26 @@ service cloud.firestore {
 
     function isValidNote(data) {
       return data.keys().hasAll(['userId', 'content', 'timestamp']) &&
-             data.userId == request.auth.uid &&
+             (data.userId == request.auth.uid || isAdmin()) &&
              data.content is string && data.content.size() < 100000 &&
              data.timestamp is number &&
              (!('title' in data) || (data.title is string && data.title.size() < 500)) &&
              (!('type' in data) || data.type in ['text', 'url']);
     }
 
-    function isValidGroup(data) {
-      return data.keys().hasAll(['userId', 'name', 'updatedAt']) &&
-             data.userId == request.auth.uid &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.updatedAt is number;
+    function isValidGroup(data, isCreate) {
+      return (isCreate ? data.keys().hasAll(['userId', 'name', 'updatedAt']) : true) &&
+             (!('userId' in data) || data.userId == request.auth.uid || isAdmin()) &&
+             (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() < 100)) &&
+             (!('updatedAt' in data) || data.updatedAt is number) &&
+             (!('topicId' in data) || (data.topicId is string && (data.topicId == "" || data.topicId.size() < 100)));
+    }
+
+    function isValidTopic(data, isCreate) {
+      return (isCreate ? data.keys().hasAll(['userId', 'name', 'updatedAt']) : true) &&
+             (!('userId' in data) || data.userId == request.auth.uid || isAdmin()) &&
+             (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() < 100)) &&
+             (!('updatedAt' in data) || data.updatedAt is number);
     }
 
     // ===============================================================
@@ -98,14 +105,22 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isOwner(userId) && isValidUser(request.resource.data) &&
-                    request.resource.data.email == resource.data.email;
+                    (request.resource.data.email == resource.data.email || isAdmin());
     }
 
     match /groups/{groupId} {
       allow read: if isDocOwner();
-      allow create: if isNewDocOwner() && isValidGroup(request.resource.data);
-      allow update: if isDocOwner() && isValidGroup(request.resource.data) &&
-                    request.resource.data.userId == resource.data.userId;
+      allow create: if isNewDocOwner() && isValidGroup(request.resource.data, true);
+      allow update: if isDocOwner() && isValidGroup(request.resource.data, false) &&
+                    (request.resource.data.userId == resource.data.userId || isAdmin());
+      allow delete: if isDocOwner();
+    }
+
+    match /topics/{topicId} {
+      allow read: if isDocOwner();
+      allow create: if isNewDocOwner() && isValidTopic(request.resource.data, true);
+      allow update: if isDocOwner() && isValidTopic(request.resource.data, false) &&
+                    (request.resource.data.userId == resource.data.userId || isAdmin());
       allow delete: if isDocOwner();
     }
 

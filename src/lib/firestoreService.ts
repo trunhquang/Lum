@@ -12,9 +12,55 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { Note, Group } from '../types';
+import { Note, Group, Topic } from '../types';
 
 export const firestoreService = {
+  // TOPICS
+  subscribeTopics: (userId: string, callback: (topics: Topic[]) => void) => {
+    const q = query(
+      collection(db, 'topics'),
+      where('userId', '==', userId),
+      orderBy('updatedAt', 'desc')
+    );
+
+    return onSnapshot(q, (snapshot) => {
+      const topics = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Topic[];
+      callback(topics);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'topics');
+    });
+  },
+
+  addTopic: async (topic: Omit<Topic, 'id'>) => {
+    try {
+      const docRef = await addDoc(collection(db, 'topics'), topic);
+      return docRef.id;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'topics');
+    }
+  },
+
+  updateTopic: async (topicId: string, updates: Partial<Topic>) => {
+    try {
+      const docRef = doc(db, 'topics', topicId);
+      await updateDoc(docRef, updates);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `topics/${topicId}`);
+    }
+  },
+
+  deleteTopic: async (topicId: string) => {
+    try {
+      const docRef = doc(db, 'topics', topicId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `topics/${topicId}`);
+    }
+  },
+
   // NOTES
   subscribeNotes: (userId: string, callback: (notes: Note[]) => void) => {
     const q = query(
@@ -123,15 +169,18 @@ export const firestoreService = {
     try {
       const notesQ = query(collection(db, 'notes'), where('userId', '==', userId));
       const groupsQ = query(collection(db, 'groups'), where('userId', '==', userId));
+      const topicsQ = query(collection(db, 'topics'), where('userId', '==', userId));
       
-      const [notesSnap, groupsSnap] = await Promise.all([
+      const [notesSnap, groupsSnap, topicsSnap] = await Promise.all([
         getDocs(notesQ),
-        getDocs(groupsQ)
+        getDocs(groupsQ),
+        getDocs(topicsQ)
       ]);
 
       const deletePromises = [
         ...notesSnap.docs.map(d => deleteDoc(doc(db, 'notes', d.id))),
-        ...groupsSnap.docs.map(d => deleteDoc(doc(db, 'groups', d.id)))
+        ...groupsSnap.docs.map(d => deleteDoc(doc(db, 'groups', d.id))),
+        ...topicsSnap.docs.map(d => deleteDoc(doc(db, 'topics', d.id)))
       ];
 
       await Promise.all(deletePromises);

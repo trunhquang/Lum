@@ -3,14 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Note, Group } from "@/src/types";
-import { ChevronLeft } from "lucide-react";
+import { Note, Group, Topic } from "@/src/types";
+import { ChevronLeft, Tags } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { NoteCard } from "./NoteCard";
+import { Badge } from "@/components/ui/badge";
 
 interface GroupDetailViewProps {
   group: Group;
+  topics: Topic[];
   notes: Note[];
   onBack: () => void;
   onNoteClick: (note: Note) => void;
@@ -26,6 +28,7 @@ interface GroupDetailViewProps {
 
 export function GroupDetailView({ 
   group, 
+  topics,
   notes, 
   onBack, 
   onNoteClick, 
@@ -53,11 +56,19 @@ export function GroupDetailView({
           <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
             <ChevronLeft className="w-6 h-6 text-gray-600" />
           </button>
-          <div className="flex-1 min-w-0 flex items-center gap-2">
-            <h2 className="font-bold text-lg truncate" style={{ color: group.color }}>{group.name}</h2>
-            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold">
-              {groupNotes.length}
-            </span>
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-lg truncate" style={{ color: group.color }}>{group.name}</h2>
+              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold">
+                {groupNotes.length}
+              </span>
+            </div>
+            {group.topicId && topics.find(t => t.id === group.topicId) && (
+              <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">
+                <Tags className="w-3 h-3" />
+                <span>{topics.find(t => t.id === group.topicId)?.name}</span>
+              </div>
+            )}
           </div>
         </div>
 
