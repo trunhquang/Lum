@@ -7,6 +7,8 @@ import { MessageSquare, Folder, BarChart3, Settings, Sparkles } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { Group } from "../types";
 
+import { User } from "firebase/auth";
+
 interface DesktopSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -16,6 +18,7 @@ interface DesktopSidebarProps {
   language?: "vi" | "en";
   isGrouping?: boolean;
   groupingStatus?: string;
+  user: User | null;
 }
 
 export function DesktopSidebar({ 
@@ -26,7 +29,8 @@ export function DesktopSidebar({
   onGroupSelect,
   language = "vi",
   isGrouping,
-  groupingStatus
+  groupingStatus,
+  user
 }: DesktopSidebarProps) {
   const tabs = [
     { id: "chat", icon: MessageSquare, label: language === "vi" ? "Lượm nhặt" : "Collect" },
@@ -109,13 +113,23 @@ export function DesktopSidebar({
             </span>
           </div>
         )}
-        <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50">
-          <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden border border-white shadow-sm">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lum" alt="User" referrerPolicy="no-referrer" />
+        <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-blue-100 overflow-hidden border border-white shadow-sm flex items-center justify-center shrink-0">
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="User" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-blue-600 font-bold text-xs">
+                {user?.displayName?.[0] || user?.email?.[0]?.toUpperCase() || "?"}
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-gray-900 truncate">Lượm User</p>
-            <p className="text-[10px] text-gray-400 truncate">tourneygk20@gmail.com</p>
+            <p className="text-xs font-bold text-gray-900 truncate">
+              {user?.displayName || (language === "vi" ? "Người dùng" : "User")}
+            </p>
+            <p className="text-[10px] text-gray-400 truncate mt-0.5">
+              {user?.email || "guest@lulum.ai"}
+            </p>
           </div>
         </div>
       </div>

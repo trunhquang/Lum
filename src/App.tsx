@@ -480,6 +480,7 @@ export default function App() {
         onGroupSelect={setSelectedGroupId}
         isGrouping={isGrouping}
         groupingStatus={groupingStatus}
+        user={user}
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
@@ -503,8 +504,20 @@ export default function App() {
                 </span>
               </div>
             )}
-            <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden border-2 border-white shadow-sm">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lum" alt="User" referrerPolicy="no-referrer" />
+            <div 
+              className="w-8 h-8 rounded-full bg-blue-100 overflow-hidden border-2 border-white shadow-sm flex items-center justify-center shrink-0 cursor-pointer"
+              onClick={() => {
+                setActiveTab("settings");
+                setCurrentView("tabs");
+              }}
+            >
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="User" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-blue-600 font-bold text-[10px]">
+                  {user?.displayName?.[0] || user?.email?.[0]?.toUpperCase() || "?"}
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -855,7 +868,7 @@ export default function App() {
         </main>
 
         <div className="md:hidden">
-          <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+          <BottomNav activeTab={activeTab} onTabChange={setActiveTab} user={user} />
         </div>
         <Toaster position="top-center" />
 
