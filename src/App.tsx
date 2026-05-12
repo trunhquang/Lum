@@ -293,31 +293,73 @@ export default function App() {
     setGroupingStatus("AI đang phân tích các nhóm để tạo chủ đề...");
     
     try {
-      const result = await groupContentIntoTopicsAI(groupsToTopic.map(g => ({
-        id: g.id,
-        name: g.name,
-        description: g.description
-      })));
+      const result = await groupContentIntoTopicsAI(
+        groupsToTopic.map(g => ({
+          id: g.id,
+          name: g.name,
+          description: g.description
+        })),
+        topics.map(t => ({
+          id: t.id,
+          name: t.name,
+          description: t.description
+        }))
+      );
 
       if (result.topics && result.topics.length > 0) {
-        for (const topicData of result.topics) {
-          // Create Topic
-          const topicId = await firestoreService.addTopic({
-            name: topicData.name,
-            description: topicData.description,
-            userId: user.uid,
-            updatedAt: Date.now(),
-            color: `#${Math.floor(Math.random()*16777215).toString(16)}`
-          });
+        let topicsCreated = 0;
+        let topicsReused = 0;
 
-          if (topicId) {
+        for (const topicData of result.topics) {
+          let finalTopicId: string | null = null;
+
+          // Check if AI suggested an existing topic ID
+          if (topicData.topicId !== "new") {
+            const exists = topics.find(t => t.id === topicData.topicId);
+            if (exists) {
+              finalTopicId = topicData.topicId;
+              topicsReused++;
+            }
+          }
+
+          // Fallback: Check if a topic with this name already exists (case-insensitive)
+          if (!finalTopicId) {
+            const nameExists = topics.find(t => 
+              t.name.toLowerCase().trim() === topicData.name.toLowerCase().trim()
+            );
+            if (nameExists) {
+              finalTopicId = nameExists.id;
+              topicsReused++;
+            }
+          }
+
+          // Create Topic if still not found
+          if (!finalTopicId) {
+            finalTopicId = await firestoreService.addTopic({
+              name: topicData.name,
+              description: topicData.description,
+              userId: user.uid,
+              updatedAt: Date.now(),
+              color: `#${Math.floor(Math.random()*16777215).toString(16)}`
+            });
+            topicsCreated++;
+          }
+
+          if (finalTopicId) {
             // Assign groups to this topic
             for (const gId of topicData.groupIds) {
-              await firestoreService.updateGroup(gId, { topicId });
+              await firestoreService.updateGroup(gId, { topicId: finalTopicId });
             }
           }
         }
-        toast.success(`Đã tạo ${result.topics.length} chủ đề thông minh`);
+
+        if (topicsCreated > 0 && topicsReused > 0) {
+          toast.success(`Đã tạo ${topicsCreated} chủ đề mới và cập nhật ${topicsReused} chủ đề cũ`);
+        } else if (topicsCreated > 0) {
+          toast.success(`Đã tạo ${topicsCreated} chủ đề thông minh`);
+        } else if (topicsReused > 0) {
+          toast.success(`Đã cập nhật ${topicsReused} chủ đề hiện có`);
+        }
       } else {
         toast.info("AI không tìm thấy mối liên hệ nào đủ lớn để tạo chủ đề mới");
       }
@@ -527,6 +569,7 @@ export default function App() {
   const stats: UserStats = {
     totalNotes: notes.length,
     totalGroups: groups.length - 1,
+    totalTopics: topics.length,
     bookmarks: notes.filter(n => n.isBookmarked).length,
     lastActive: notes[0]?.timestamp || Date.now(),
     notesPerDay: Array.from({ length: 7 }).map((_, i) => {
@@ -541,6 +584,14 @@ export default function App() {
     topGroups: groups
       .filter(g => g.id !== "ungrouped")
       .map(g => ({ groupId: g.id, name: g.name, count: noteCounts[g.id] || 0 }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5),
+    topTopics: topics
+      .map(t => {
+        const topicGroups = groups.filter(g => g.topicId === t.id);
+        const count = topicGroups.reduce((sum, g) => sum + (noteCounts[g.id] || 0), 0);
+        return { topicId: t.id, name: t.name, count };
+      })
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
   };

@@ -23,7 +23,9 @@ import {
   ChevronDown,
   ChevronRight,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Search,
+  X
 } from "lucide-react";
 import { 
   DropdownMenu, 
@@ -67,6 +69,7 @@ export function SmartGroupsView({
   language = "vi"
 }: SmartGroupsViewProps) {
   const [activeMode, setActiveMode] = useState<"flat" | "topics">("flat");
+  const [searchTerm, setSearchTerm] = useState("");
   const [collapsedTopics, setCollapsedTopics] = useState<Set<string>>(new Set(topics.map(t => t.id)));
 
   // Sync collapsed state when topics change: new topics should be collapsed by default
@@ -117,13 +120,58 @@ export function SmartGroupsView({
 
   const collapseAll = () => setCollapsedTopics(new Set(topics.map(t => t.id)));
   const expandAll = () => setCollapsedTopics(new Set());
+  
+  // Auto-expand topics that contain matching groups when searching
+  useEffect(() => {
+    if (searchTerm.trim() !== "") {
+      const topicsWithMatches = new Set(collapsedTopics);
+      topics.forEach(topic => {
+        const hasMatches = groups.some(g => 
+          g.topicId === topic.id && 
+          (g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           (g.description || "").toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+        if (hasMatches) {
+          topicsWithMatches.delete(topic.id);
+        }
+      });
+      setCollapsedTopics(topicsWithMatches);
+    }
+  }, [searchTerm, topics]);
 
-  const ungroupedGroups = groups.filter(g => !g.topicId || g.topicId === "" || g.id === "ungrouped");
+  const filteredGroups = groups.filter(g => 
+    g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (g.description || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const ungroupedGroups = filteredGroups.filter(g => !g.topicId || g.topicId === "" || g.id === "ungrouped");
 
   const allCollapsed = topics.length > 0 && Array.from(collapsedTopics).length === topics.length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Search Header */}
+      <div className="px-4 pt-4 pb-0 bg-white relative shrink-0">
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+          <input 
+            type="text"
+            placeholder={language === "vi" ? "Tìm kiếm nhóm..." : "Search groups..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-gray-50 border-none rounded-xl py-2.5 pl-9 pr-9 text-xs font-medium placeholder:text-gray-400 focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-gray-200 rounded-full transition-colors"
+            >
+              <X className="w-3 h-3 text-gray-400" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="p-3 sm:p-4 border-b border-gray-50 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white shrink-0">
         <div className="flex items-center overflow-x-auto scrollbar-hide -mx-1 px-1">
           <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as any)} className="w-auto flex-shrink-0">
@@ -198,13 +246,24 @@ export function SmartGroupsView({
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em]">{language === "vi" ? "Danh sách tất cả các nhóm" : "All Groups List"}</h3>
               </div>
-              <GroupList 
-                groups={groups} 
-                notes={notes} 
-                noteCounts={noteCounts} 
-                onGroupClick={onGroupClick} 
-                language={language}
-              />
+              {filteredGroups.length > 0 ? (
+                <GroupList 
+                  groups={filteredGroups} 
+                  notes={notes} 
+                  noteCounts={noteCounts} 
+                  onGroupClick={onGroupClick} 
+                  language={language}
+                />
+              ) : (
+                <div className="py-20 text-center space-y-4">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
+                    <Search className="w-8 h-8 text-gray-300" />
+                  </div>
+                  <p className="text-sm text-gray-400 font-medium">
+                    {language === "vi" ? "Không tìm thấy nhóm nào phù hợp" : "No matching groups found"}
+                  </p>
+                </div>
+              )}
             </motion.div>
           ) : (
             <motion.div 
@@ -226,8 +285,27 @@ export function SmartGroupsView({
                 </div>
               )}
 
+              {topics.length > 0 && searchTerm !== "" && filteredGroups.length === 0 && (
+                <div className="py-20 text-center space-y-4">
+                   <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
+                    <Search className="w-8 h-8 text-gray-300" />
+                  </div>
+                  <p className="text-sm text-gray-400 font-medium">
+                    {language === "vi" ? "Không tìm thấy kết quả nào trong các chủ đề" : "No results found in topics"}
+                  </p>
+                </div>
+              )}
+
               {topics.map(topic => {
-                const topicGroups = groups.filter(g => g.topicId === topic.id);
+                const topicGroups = filteredGroups.filter(g => g.topicId === topic.id);
+                
+                // If searching, hide topics that don't match and have no matching groups
+                const topicMatchesSearch = searchTerm === "" || 
+                                         topic.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                         (topic.description || "").toLowerCase().includes(searchTerm.toLowerCase());
+                
+                if (searchTerm !== "" && topicGroups.length === 0 && !topicMatchesSearch) return null;
+
                 const isCollapsed = collapsedTopics.has(topic.id);
                 
                 return (
@@ -263,10 +341,14 @@ export function SmartGroupsView({
                           <DropdownMenuTrigger className="h-8 w-8 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none">
                             <MoreVertical className="w-4 h-4" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5 shadow-xl border-gray-100 bg-white">
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5 shadow-xl border-gray-100 bg-white" sideOffset={8}>
                             <DropdownMenuItem 
-                              className="rounded-lg gap-2 text-xs font-medium py-2 focus:bg-gray-50 focus:outline-none"
-                              onSelect={() => onRenameTopic(topic)}
+                              className="rounded-lg gap-2 text-xs font-medium py-2 focus:bg-gray-50 focus:outline-none cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log("[SmartGroupsView] Rename clicked for topic:", topic.id);
+                                setTimeout(() => onRenameTopic(topic), 100);
+                              }}
                             >
                               <FolderEdit className="w-3.5 h-3.5 text-gray-400" />
                               Đổi tên chủ đề
@@ -276,25 +358,33 @@ export function SmartGroupsView({
                                 <Plus className="w-3.5 h-3.5 text-gray-400" />
                                 Thêm nhóm vào đây
                               </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent className="w-56 rounded-xl p-1.5 border-gray-100 bg-white">
+                              <DropdownMenuSubContent className="w-56 rounded-xl p-1.5 border-gray-100 bg-white shadow-xl">
                                 {ungroupedGroups.filter(g => g.id !== "ungrouped").map(g => (
                                   <DropdownMenuItem 
                                     key={g.id}
-                                    className="rounded-lg text-xs py-2 focus:bg-gray-50 focus:outline-none"
-                                    onSelect={() => onAssignGroupToTopic(g.id, topic.id)}
+                                    className="rounded-lg text-xs py-2 focus:bg-gray-50 focus:outline-none cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      console.log("[SmartGroupsView] Assign group", g.id, "to topic", topic.id);
+                                      setTimeout(() => onAssignGroupToTopic(g.id, topic.id), 100);
+                                    }}
                                   >
                                     {g.name}
                                   </DropdownMenuItem>
                                 ))}
                                 {ungroupedGroups.filter(g => g.id !== "ungrouped").length === 0 && (
-                                  <div className="p-4 text-center text-[10px] text-gray-400">Không còn nhóm nào để thêm</div>
+                                  <div className="p-4 text-center text-[10px] text-gray-400 italic">Không còn nhóm nào tự do</div>
                                 )}
                               </DropdownMenuSubContent>
                             </DropdownMenuSub>
                             <DropdownMenuSeparator className="my-1.5 bg-gray-50" />
                             <DropdownMenuItem 
-                              className="rounded-lg gap-2 text-xs font-medium py-2 text-red-600 focus:text-red-600 focus:bg-red-50 focus:outline-none"
-                              onSelect={() => onDeleteTopic(topic.id)}
+                              className="rounded-lg gap-2 text-xs font-medium py-2 text-red-600 focus:text-red-600 focus:bg-red-50 focus:outline-none cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log("[SmartGroupsView] Delete clicked for topic:", topic.id);
+                                setTimeout(() => onDeleteTopic(topic.id), 100);
+                              }}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               Xóa chủ đề

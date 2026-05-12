@@ -29,7 +29,7 @@ export function StatsDashboard({ stats, groups, language = "vi" }: StatsDashboar
 
   return (
     <div className="p-4 md:p-6 space-y-6 pb-24">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-blue-50/50 border-none shadow-sm">
           <CardHeader className="p-4 pb-0">
             <CardTitle className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">
@@ -50,26 +50,39 @@ export function StatsDashboard({ stats, groups, language = "vi" }: StatsDashboar
             <span className="text-3xl font-black text-purple-900">{stats.totalGroups}</span>
           </CardContent>
         </Card>
-        <Card className="bg-green-50/50 border-none shadow-sm hidden lg:block">
+        <Card className="bg-indigo-50/50 border-none shadow-sm">
+          <CardHeader className="p-4 pb-0">
+            <CardTitle className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">
+              {isVi ? "Chủ đề thông minh" : "Smart Topics"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2">
+            <span className="text-3xl font-black text-indigo-900">{stats.totalTopics || 0}</span>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 lg:hidden">
+        <Card className="bg-green-50/50 border-none shadow-sm">
           <CardHeader className="p-4 pb-0">
             <CardTitle className="text-[10px] text-green-600 font-bold uppercase tracking-widest">
               {isVi ? "Ghi chú hôm nay" : "Notes Today"}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-2">
-            <span className="text-3xl font-black text-green-900">
+            <span className="text-xl font-black text-green-900">
               {stats.notesPerDay[stats.notesPerDay.length - 1]?.count || 0}
             </span>
           </CardContent>
         </Card>
-        <Card className="bg-orange-50/50 border-none shadow-sm hidden lg:block">
+        <Card className="bg-orange-50/50 border-none shadow-sm">
           <CardHeader className="p-4 pb-0">
             <CardTitle className="text-[10px] text-orange-600 font-bold uppercase tracking-widest">
               {isVi ? "Trung bình/Ngày" : "Avg per Day"}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-2">
-            <span className="text-3xl font-black text-orange-900">
+            <span className="text-xl font-black text-orange-900">
               {(stats.totalNotes / 7).toFixed(1)}
             </span>
           </CardContent>
@@ -132,7 +145,7 @@ export function StatsDashboard({ stats, groups, language = "vi" }: StatsDashboar
                   <div className="w-full bg-gray-50 h-2 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-blue-500 rounded-full transition-all duration-1000" 
-                      style={{ width: `${(group.count / Math.max(...stats.topGroups.map(g => g.count))) * 100}%` }}
+                      style={{ width: `${(group.count / Math.max(...stats.topGroups.map(g => g.count), 1)) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -141,6 +154,40 @@ export function StatsDashboard({ stats, groups, language = "vi" }: StatsDashboar
             {stats.topGroups.length === 0 && (
               <div className="py-10 text-center text-gray-400 text-sm">
                 {isVi ? "Chưa có dữ liệu nhóm" : "No group data yet"}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="p-6 border-b border-gray-50">
+            <CardTitle className="text-sm font-bold text-gray-900 uppercase tracking-widest">
+              {isVi ? "Chủ đề hiệu quả" : "Popular Topics"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-5">
+            {stats.topTopics?.map((topic, idx) => (
+              <div key={topic.topicId} className="flex items-center gap-4">
+                <span className="text-xs font-black text-gray-300 w-4">{idx + 1}</span>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-bold text-gray-700">{topic.name}</span>
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                      {topic.count} {isVi ? "ghi chú" : "notes"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-50 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-500 rounded-full transition-all duration-1000" 
+                      style={{ width: `${(topic.count / Math.max(...(stats.topTopics?.map(t => t.count) || [1]), 1)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {(!stats.topTopics || stats.topTopics.length === 0) && (
+              <div className="py-10 text-center text-gray-400 text-sm">
+                {isVi ? "Chưa có dữ liệu chủ đề" : "No topic data yet"}
               </div>
             )}
           </CardContent>

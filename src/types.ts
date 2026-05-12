@@ -44,8 +44,10 @@ export interface Topic {
 export interface UserStats {
   totalNotes: number;
   totalGroups: number;
+  totalTopics?: number;
   bookmarks: number;
   lastActive: number;
   notesPerDay?: { date: string; count: number }[];
   topGroups?: { groupId: string; name: string; count: number }[];
+  topTopics?: { topicId: string; name: string; count: number }[];
 }

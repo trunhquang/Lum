@@ -164,28 +164,36 @@ export async function translateNoteContent(
   }
 }
 
-export async function groupContentIntoTopicsAI(groups: { id: string; name: string; description?: string }[]) {
+export async function groupContentIntoTopicsAI(
+  groups: { id: string; name: string; description?: string }[],
+  existingTopics: { id: string; name: string; description?: string }[] = []
+) {
   const prompt = `
     You are an AI data architect for LUM.
     Your task is to take a list of "Groups" (folders) and organize them into higher-level "Topics" (Themes/Categories).
     
+    Existing Topics:
+    ${existingTopics.length > 0 ? existingTopics.map(t => `- ${t.name} (ID: ${t.id}): ${t.description || "No description"}`).join('\n') : "None yet."}
+
     Groups to organize:
     ${groups.map(g => `- ${g.name} (ID: ${g.id}): ${g.description || "No description"}`).join('\n')}
 
     Rules:
     1. Group related items into cohesive topics.
-    2. Suggest a name and description for each topic.
-    3. Return a list of mappings: which group belongs to which topic using the provided group IDs.
-    4. If a group is too unique, it can be its own topic or left out by not assigning a topic (assign null).
-    5. Topics should be broad enough to house multiple groups but specific enough to be useful (e.g., "Kỳ nghỉ & Du lịch", "Học thuật & Nghiên cứu", "Tài chính Cá nhân").
-    6. Return the results in JSON.
-    7. IMPORTANT: Only use the IDs provided in the "Groups to organize" section. Do not use group names as groupIds.
+    2. Suggest a name and description for each topic. 
+    3. IMPORTANT: If an existing topic fits the groups well, you MUST reuse it by providing its ID.
+    4. If the groups don't fit any existing topic, suggest a new one.
+    5. Return a list of mappings: which groups belong to which topic.
+    6. If a group is too unique, it can be its own topic or left out by not assigning a topic (assign null).
+    7. Topics should be broad enough to house multiple groups but specific enough to be useful.
+    8. Return the results in JSON.
 
     Response format:
     {
       "topics": [
         {
-          "name": "Topic Name",
+          "topicId": "existing_id" or "new",
+          "name": "Topic Name (for new ones) or existing name",
           "description": "Topic Description",
           "groupIds": ["id1", "id2"]
         }
@@ -208,6 +216,7 @@ export async function groupContentIntoTopicsAI(groups: { id: string; name: strin
               items: {
                 type: Type.OBJECT,
                 properties: {
+                  topicId: { type: Type.STRING },
                   name: { type: Type.STRING },
                   description: { type: Type.STRING },
                   groupIds: {
@@ -215,7 +224,7 @@ export async function groupContentIntoTopicsAI(groups: { id: string; name: strin
                     items: { type: Type.STRING }
                   }
                 },
-                required: ["name", "description", "groupIds"]
+                required: ["topicId", "name", "description", "groupIds"]
               }
             }
           },
