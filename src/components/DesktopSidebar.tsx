@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MessageSquare, Folder, BarChart3, Settings, Sparkles } from "lucide-react";
+import { MessageSquare, Folder, BarChart3, Settings, Sparkles, Pin, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Group } from "../types";
 
@@ -76,15 +76,47 @@ export function DesktopSidebar({
         
         <div className="space-y-1">
           <button
-            onClick={() => onGroupSelect(null)}
+            onClick={() => {
+              onGroupSelect(null);
+              onTabChange("chat");
+            }}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-              !selectedGroupId && activeTab === "chat" ? "text-blue-600 font-medium" : "text-gray-500 hover:bg-gray-50"
+              !selectedGroupId && activeTab === "chat" ? "text-blue-600 font-medium bg-blue-50/50" : "text-gray-500 hover:bg-gray-50"
             )}
           >
-            <div className="w-2 h-2 rounded-full bg-gray-300" />
-            <span>{language === "vi" ? "Tất cả" : "All Notes"}</span>
+            <div className="w-2 h-2 rounded-full bg-gray-400 shrink-0" />
+            <span className="font-medium">{language === "vi" ? "Tất cả ghi chú" : "All Notes"}</span>
           </button>
+
+          <button
+            onClick={() => {
+              onGroupSelect("pin");
+              onTabChange("chat");
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+              selectedGroupId === "pin" && activeTab === "chat" ? "text-blue-600 font-medium bg-blue-50/50" : "text-gray-500 hover:bg-gray-50"
+            )}
+          >
+            <Pin className={cn("w-4 h-4 shrink-0", selectedGroupId === "pin" && activeTab === "chat" ? "text-blue-600 fill-blue-10/20" : "text-gray-400")} />
+            <span className="font-medium">{language === "vi" ? "Ghi chú đã ghim" : "Pinned Notes"}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onGroupSelect("favorite");
+              onTabChange("chat");
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+              selectedGroupId === "favorite" && activeTab === "chat" ? "text-blue-600 font-medium bg-blue-50/50" : "text-gray-500 hover:bg-gray-50"
+            )}
+          >
+            <Heart className={cn("w-4 h-4 shrink-0", selectedGroupId === "favorite" && activeTab === "chat" ? "text-blue-600 fill-blue-600/10" : "text-gray-400")} />
+            <span className="font-medium">{language === "vi" ? "Yêu thích" : "Favorites"}</span>
+          </button>
+
           {groups.filter(g => g.id !== "ungrouped").map((group) => (
             <button
               key={group.id}

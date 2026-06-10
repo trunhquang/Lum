@@ -18,11 +18,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { Search, Sparkles, RefreshCw, LogIn, LogOut, User as UserIcon } from "lucide-react";
+import { Search, Sparkles, RefreshCw, LogIn, LogOut, User as UserIcon, Pin, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 import { 
   Dialog, 
@@ -554,6 +555,12 @@ export default function App() {
   const filteredNotes = notes.filter(n => {
     const matchesSearch = n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          n.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    if (selectedGroupId === "favorite") {
+      return n.isBookmarked && matchesSearch;
+    }
+    if (selectedGroupId === "pin") {
+      return n.isPinned && matchesSearch;
+    }
     if (selectedGroupId) {
       return n.groupId === selectedGroupId && matchesSearch;
     }
@@ -777,10 +784,72 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Horizontal Quick Filters scroll */}
+                <div className="px-4 md:px-6 pb-3 pt-1 flex gap-2 overflow-x-auto scrollbar-hide shrink-0 border-b border-gray-50 bg-white">
+                  <button
+                    onClick={() => setSelectedGroupId(null)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5",
+                      !selectedGroupId 
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-100" 
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    )}
+                  >
+                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", !selectedGroupId ? "bg-white" : "bg-gray-400")} />
+                    <span>Tất cả</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedGroupId("pin")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5",
+                      selectedGroupId === "pin" 
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-100" 
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    )}
+                  >
+                    <Pin className={cn("w-3 h-3 shrink-0", selectedGroupId === "pin" ? "text-white fill-white/10" : "text-gray-400")} />
+                    <span>Ghim [📌]</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedGroupId("favorite")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5",
+                      selectedGroupId === "favorite" 
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-100" 
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    )}
+                  >
+                    <Heart className={cn("w-3 h-3 shrink-0", selectedGroupId === "favorite" ? "text-white fill-white/20" : "text-gray-400")} />
+                    <span>Yêu thích [❤️]</span>
+                  </button>
+                  {groups.filter(g => g.id !== "ungrouped").map((group) => (
+                    <button
+                      key={group.id}
+                      onClick={() => setSelectedGroupId(group.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5",
+                        selectedGroupId === group.id 
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-100" 
+                          : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                      )}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                      <span>{group.name}</span>
+                    </button>
+                  ))}
+                </div>
+
                 {selectedGroupId && (
-                  <div className="px-4 md:px-6 py-2 flex items-center justify-between bg-blue-50/30">
-                    <div className="flex items-center gap-2 bg-blue-100/50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-200/50">
-                      <span>Nhóm: {groups.find(g => g.id === selectedGroupId)?.name}</span>
+                  <div className="px-4 md:px-6 py-2 flex items-center justify-between bg-blue-50/10 border-b border-gray-50/50">
+                    <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-100/50">
+                      <span>
+                        {selectedGroupId === "favorite" 
+                          ? "Yêu thích ❤️" 
+                          : selectedGroupId === "pin"
+                          ? "Đã ghim 📌"
+                          : `Nhóm: ${groups.find(g => g.id === selectedGroupId)?.name || ""}`
+                        }
+                      </span>
                       <button 
                         onClick={() => setSelectedGroupId(null)}
                         className="hover:text-blue-900 ml-1"
@@ -797,11 +866,31 @@ export default function App() {
                     {filteredNotes.length === 0 && !searchQuery && (
                       <div className="col-span-full py-20 text-center space-y-4">
                         <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
-                          <Sparkles className="w-10 h-10 text-blue-400" />
+                          {selectedGroupId === "favorite" ? (
+                            <Heart className="w-10 h-10 text-rose-400 fill-rose-50" />
+                          ) : selectedGroupId === "pin" ? (
+                            <Pin className="w-10 h-10 text-blue-400" />
+                          ) : (
+                            <Sparkles className="w-10 h-10 text-blue-400" />
+                          )}
                         </div>
                         <div className="space-y-1">
-                          <p className="font-bold text-gray-600">Bắt đầu lượm nhặt</p>
-                          <p className="text-xs text-gray-400 px-10">Quăng bất cứ thứ gì vào đây, AI sẽ giúp bạn sắp xếp gọn gàng.</p>
+                          <p className="font-bold text-gray-600">
+                            {selectedGroupId === "favorite" 
+                              ? "Chưa có mục yêu thích" 
+                              : selectedGroupId === "pin"
+                              ? "Chưa có mục được ghim" 
+                              : "Bắt đầu lượm nhặt"
+                            }
+                          </p>
+                          <p className="text-xs text-gray-400 px-10">
+                            {selectedGroupId === "favorite" 
+                              ? "Hãy bấm vào biểu tượng trái tim trên các thẻ ghi chú để lưu vào đây." 
+                              : selectedGroupId === "pin"
+                              ? "Hãy bấm ghim để giữ các ghi chú quan trọng ở đầu danh sách." 
+                              : "Quăng bất cứ thứ gì vào đây, AI sẽ giúp bạn sắp xếp gọn gàng."
+                            }
+                          </p>
                         </div>
                       </div>
                     )}
